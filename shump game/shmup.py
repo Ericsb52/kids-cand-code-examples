@@ -1,21 +1,25 @@
-# author: Ericsb52
+# auth: Ericsb52
 # Date: 8/18
 # broadbent52@aol.com
+# shooter game example
 
 
 
-#imports
+# imports
 import pygame
 import random
 from os import path
+import time
 
-#path setup
+# path setup
 img_dir = path.join(path.dirname(__file__), 'img')
 snd_dir = path.join(path.dirname(__file__), 'snd')
-#constants
+
+# constants
 WIDTH = 480
 HEIGHT = 600
 FPS = 60
+POWERUP_TIME = 10000
 
 # define colors
 WHITE = (255, 255, 255)
@@ -28,7 +32,7 @@ YELLOW = (255, 255, 0)
 # font 
 font_name = pygame.font.match_font("arial")
 
-#initialize pygame and create window
+# initialize pygame and create window
 pygame.init()
 pygame.mixer.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -36,7 +40,6 @@ pygame.display.set_caption("SHMUP!")
 clock = pygame.time.Clock()
 
 # functions
-
 def draw_text(surf, text,size,x,y):
     font = pygame.font.Font(font_name, size)
     text_surface = font.render(text, True, WHITE)
@@ -60,7 +63,30 @@ def draw_shield_bar(surf,x,y,pct):
     pygame.draw.rect(surf, GREEN, fill_rect)
     pygame.draw.rect(surf, WHITE, outline_rect,3)
 
-#classes
+def draw_lives(surf, x, y, lives, img):
+    for i in range(lives):
+        img_rect = img.get_rect()
+        img_rect.x = x + 30 * i
+        img_rect.y = y
+        surf.blit(img, img_rect)
+
+def show_go_screen():
+    screen.blit(background, background_rect)
+    draw_text(screen, "Space Shooter", 64, WIDTH / 2, HEIGHT / 4)
+    draw_text(screen, "Arrow keys move, Space bar to shoot", 22, WIDTH / 2, HEIGHT / 2)
+    draw_text(screen, "press a key to start", 14, WIDTH / 2, HEIGHT * 3/4)
+    draw_text(screen, "Created by: Eric Broadbent", 14, WIDTH / 2, HEIGHT * 7/8)
+    pygame.display.flip()
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYUP:
+                waiting = False
+                
+# classes
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -74,10 +100,28 @@ class Player(pygame.sprite.Sprite):
         self.speedx = 0
         self.speedy = 0
         self.shield = 100
-        self.shoot_delay = 250
+        self.shoot_delay = 500
         self.last_shot = pygame.time.get_ticks()
+        self.lives = 3
+        self.hidden = False
+        self.hidden_timer = pygame.time.get_ticks()
+        self.power = 1
+        self.power_timer = pygame.time.get_ticks()
 
     def update(self):
+    
+        #power level time out
+        if self.power >= 2 and pygame.time.get_ticks() - self.power_timer > POWERUP_TIME:
+            self.power -= 1
+            self.power_timer = pygame.time.get_ticks()
+        if self.power < 1:
+            self.power = 1
+            
+        if self.hidden and pygame.time.get_ticks() - self.hidden_timer > 5000:
+            self.hidden = False
+            self.rect.centerx = WIDTH / 2 
+            self.rect.bottom = HEIGHT - 10
+            
         self.speedx = 0
         self.speedy = 0
         keystate = pygame.key.get_pressed()
@@ -97,7 +141,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.y += self.speedy
         if self.rect.top < 0:
             self.rect.top = 0
-        if self.rect.bottom > HEIGHT:
+        if self.rect.bottom > HEIGHT and self.rect.bottom < HEIGHT + 199:
             self.rect.bottom = HEIGHT
         if self.rect.right > WIDTH:
             self.rect.right = WIDTH
@@ -108,10 +152,50 @@ class Player(pygame.sprite.Sprite):
         now = pygame.time.get_ticks()
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
-            bullet = Bullet(self.rect.centerx, self.rect.top)
-            all_sprites.add(bullet)
-            bullets.add(bullet)
-            shoot_sound.play()
+            if self.power <= 1:
+                bullet = Bullet(self.rect.centerx, self.rect.top)
+                all_sprites.add(bullet)
+                bullets.add(bullet)
+                shoot_sound.play()
+            if self.power == 2:
+                bullet1 = Bullet(self.rect.left, self.rect.centery)
+                bullet2 = Bullet(self.rect.right, self.rect.centery)
+                all_sprites.add(bullet1)
+                all_sprites.add(bullet2)
+                bullets.add(bullet1)
+                bullets.add(bullet2)
+                shoot_sound.play()
+            if self.power ==3:
+                bullet1 = Bullet(self.rect.left, self.rect.centery)
+                bullet2 = Bullet(self.rect.right, self.rect.centery)
+                bullet = Bullet(self.rect.centerx, self.rect.top)
+                all_sprites.add(bullet)
+                all_sprites.add(bullet1)
+                all_sprites.add(bullet2)
+                bullets.add(bullet)
+                bullets.add(bullet1)
+                bullets.add(bullet2)
+                shoot_sound.play()
+            if self.power >=4:
+                bullet1 = Bullet(self.rect.left, self.rect.centery,-2)
+                bullet2 = Bullet(self.rect.right, self.rect.centery,2)
+                bullet = Bullet(self.rect.centerx, self.rect.top)
+                all_sprites.add(bullet)
+                all_sprites.add(bullet1)
+                all_sprites.add(bullet2)
+                bullets.add(bullet)
+                bullets.add(bullet1)
+                bullets.add(bullet2)
+                shoot_sound.play()
+                
+    def powerup(self):
+        self.power += 1
+        self.powertime = pygame.time.get_ticks()
+    
+    def hide(self):
+        self.hidden = True
+        self.hidden_timer = pygame.time.get_ticks()
+        self.rect.center = (WIDTH / 2, HEIGHT + 500)
         
             
 class Mob(pygame.sprite.Sprite):
@@ -122,7 +206,7 @@ class Mob(pygame.sprite.Sprite):
         self.image = self.image_orig.copy()
         self.rect = self.image.get_rect()
         self.radius = int(self.rect.width * .85 / 2)
-        # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
+        #pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
         self.rect.x = random.randrange(WIDTH - self.rect.width)
         self.rect.y = random.randrange(-150, -100)
         self.speedy = random.randrange(1, 8)
@@ -153,7 +237,7 @@ class Mob(pygame.sprite.Sprite):
             self.speedy = random.randrange(1, 8)
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, speedx = 0):
         pygame.sprite.Sprite.__init__(self)
         self.image = bullet_img
         self.image.set_colorkey(BLACK)
@@ -161,12 +245,28 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.bottom = y
         self.rect.centerx = x
         self.speedy = -10
+        self.speedx = speedx
     def update(self):
         self.rect.y += self.speedy
-        #kill it if it moves off the screen
+        self.rect.x += self.speedx
+        # kill it if it moves off the screen
         if self.rect.bottom < 0:
             self.kill()
 
+class Pow(pygame.sprite.Sprite):
+    def __init__(self, center):
+        pygame.sprite.Sprite.__init__(self)
+        self.type = random.choice(['shield','gun'])
+        self.image = powerup_images[self.type]
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.speedy = 5
+    def update(self):
+        self.rect.y += self.speedy
+        # kill it if it moves off the screen
+        if self.rect.top > HEIGHT:
+            self.kill()
             
 class Explosion(pygame.sprite.Sprite):
     def __init__(self, center, size):
@@ -177,7 +277,7 @@ class Explosion(pygame.sprite.Sprite):
         self.rect.center = center
         self.frame = 0
         self.last_update = pygame.time.get_ticks()
-        self.frame_rate = 15
+        self.frame_rate = 50
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -198,6 +298,8 @@ class Explosion(pygame.sprite.Sprite):
 background = pygame.image.load(path.join(img_dir, "space1.png")).convert()
 background_rect = background.get_rect()
 player_img = pygame.image.load(path.join(img_dir, "playerShip1_red.png")).convert()
+player_mini_img = pygame.transform.scale(player_img, (25,19))
+player_mini_img.set_colorkey(BLACK)
 meteor_img = pygame.image.load(path.join(img_dir, "meteorBrown_med1.png")).convert()
 bullet_img = pygame.image.load(path.join(img_dir, "laserGreen13.png")).convert()
 
@@ -216,6 +318,7 @@ for img in meteor_list:
 expl_anim = {}
 expl_anim['lg'] = []
 expl_anim ['sm'] = []
+expl_anim ['player'] = []
 for i in range (24):
     filename = 'expl_01_{}.png'.format(i)
     img = pygame.image.load(path.join(img_dir, filename)).convert()
@@ -224,39 +327,68 @@ for i in range (24):
     expl_anim['lg'].append(img_lg)
     img_sm = pygame.transform.scale(img, (32,32))
     expl_anim['sm'].append(img_sm)
-                            
+    filename = 'expl_02_{}.png'.format(i)
+    img = pygame.image.load(path.join(img_dir, filename)).convert()
+    img.set_colorkey(BLACK)
+    expl_anim['player'].append(img)
+
+powerup_images = {}
+powerup_images['shield'] = pygame.image.load(path.join(img_dir, 'shield_gold.png')).convert()
+powerup_images['gun'] = pygame.image.load(path.join(img_dir, 'bolt_gold.png')).convert()                           
+
 # load game sounds
 shoot_sound = pygame.mixer.Sound(path.join(snd_dir, 'LazerFire1.wav'))
+shoot_sound.set_volume(0.15)
+shield_sound = pygame.mixer.Sound(path.join(snd_dir, 'sfx_shieldUp.ogg'))
+shield_sound.set_volume(0.5)
+power_sound = pygame.mixer.Sound(path.join(snd_dir, 'sfx_zap.ogg'))
+power_sound.set_volume(0.5)
 
 expl_sounds = []
 for snd in ["Explosion3.wav","Explosion4.wav"]:
-    expl_sounds.append(pygame.mixer.Sound(path.join(snd_dir, snd)))
-
-pygame.mixer.music.load(path.join(snd_dir, "Cavern.ogg"))
-pygame.mixer.music.set_volume(0.4)
-
-# sprite groups
-all_sprites = pygame.sprite.Group()
-mobs = pygame.sprite.Group()
-bullets = pygame.sprite.Group()
-
-player = Player()
-all_sprites.add(player)
-
-for i in range(8):
-    newmob()
+    x=pygame.mixer.Sound(path.join(snd_dir, snd))
+    x.set_volume(0.20)
+    expl_sounds.append(x)
     
 
-score = 0
+pygame.mixer.music.load(path.join(snd_dir, "Cavern.ogg"))
+pygame.mixer.music.set_volume(0.25)
+
+
+player_die_sound = pygame.mixer.Sound(path.join(snd_dir, 'rumble1.ogg'))
+
+
+
+
 pygame.mixer.music.play(loops=-1)
-#game loop
+
+# game loop
+game_over = True
 running = True
 while running:
-    #keep loop running at the right speed
+    if game_over:
+        show_go_screen()
+        game_over = False
+        # sprite groups
+        all_sprites = pygame.sprite.Group()
+        mobs = pygame.sprite.Group()
+        bullets = pygame.sprite.Group()
+        powerups = pygame.sprite.Group()
+
+        player = Player()
+        all_sprites.add(player)
+
+        for i in range(8):
+            newmob()
+
+        # game variables
+        score = 0
+        
+    # keep loop running at the right speed
     clock.tick(FPS)
-    #process input (events)
+    # process input (events)
     for event in pygame.event.get():
-        #closing the window
+        # closing the window
         if event.type == pygame.QUIT:
             running = False
 
@@ -267,16 +399,33 @@ while running:
     all_sprites.update()
 
     # check for overlapping sprites
-    # bulets on mobs
+    # check for power up and player colision
+    hits = pygame.sprite.spritecollide(player, powerups, True)
+    for hit in hits:
+        if hit.type == "shield":
+            player.shield += random.randrange(10,30)
+            shield_sound.play()
+            if player.shield >= 100:
+                player.shield = 100
+        if hit.type == "gun":
+            power_sound.play()
+            player.powerup()
+            print(player.power)
+    
+    # bulets on mobs colisions
     hits = pygame.sprite.groupcollide(mobs, bullets, True,True)
     for hit in hits:
         score += 50 - hit.radius
         expl_sounds[1].play()
         expl = Explosion(hit.rect.center, 'lg')
         all_sprites.add(expl)
+        if random.random() > 0.9:
+            pow = Pow(hit.rect.center)
+            all_sprites.add(pow)
+            powerups.add(pow)
         newmob()
         
-    #mobs and player
+    # mobs and player colision
     hits = pygame.sprite.spritecollide(player, mobs, True, pygame.sprite.collide_circle)
     for hit in  hits:
         player.shield -= hit.radius * 1.2
@@ -284,8 +433,20 @@ while running:
         expl = Explosion(hit.rect.center, 'sm')
         all_sprites.add(expl)
         newmob()
-        if player.shield <= 0:
-            running = False
+        
+        if player.shield <= 0 :
+            death_expl = Explosion(player.rect.center, "player")
+            all_sprites.add(death_expl)
+            player_die_sound.play()
+            player.hide()
+            player.lives -= 1
+            player.shield = 100
+
+                
+            
+
+    if player.lives == 0 and not death_expl.alive() :
+        game_over = True
 
 
             
@@ -295,6 +456,8 @@ while running:
     all_sprites.draw(screen)
     draw_text(screen, str(score), 20, WIDTH / 2 , 10)
     draw_shield_bar(screen,5,5,player.shield)
+    draw_lives(screen, WIDTH - 100, 5, player.lives, player_mini_img)
+
     # after drawing every thing
     pygame.display.flip()
 
