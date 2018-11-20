@@ -33,10 +33,11 @@ class Game:
         ground = Platform(0,HEIGHT-40,WIDTH,40)
         self.all_sprites.add(ground)
         self.platforms.add(ground)
-
-        bottompipe = Pipe(WIDTH+60,HEIGHT, 40, 200)
-        self.all_sprites.add(bottompipe)
-        self.pipes.add(bottompipe)
+        x = Pipe(WIDTH+60,0, 40, 300)
+        z = Pipe(WIDTH+60,HEIGHT, 40, 300)
+        self.all_sprites.add(x,z)
+        self.pipes.add(x,z)
+        
         
         g.run()
        
@@ -60,6 +61,18 @@ class Game:
         if hits:
             self.player.pos.y = hits[0].rect.top
             self.player.vel.y = 0
+        if len(self.pipes)<1:
+            offsets =[-125,-100,-75,-50,-25,0,25,50,75,100,125]
+            offset = random.choice(offsets)
+            x = Pipe(WIDTH+60,0+offset, 40, 340)
+            z = Pipe(WIDTH+60,HEIGHT+offset, 40, 340)
+            self.all_sprites.add(x,z)
+            self.pipes.add(x,z)
+        hitspipe = pg.sprite.spritecollide(self.player,self.pipes,False)
+        if hitspipe:
+            self.player.die()
+            
+        
     
     def events(self):
         #game loop -- events
@@ -88,7 +101,10 @@ class Game:
     def show_gameOver_screen(self):
         # game over screen
         pass
-    
+
+
+        
+        
 g = Game()
 g.show_start_screen()
 while g.running:

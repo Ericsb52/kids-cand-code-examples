@@ -18,6 +18,7 @@ class Player(pg.sprite.Sprite):
         self.vel.y = -15
     def update(self):
         self.acc = vec(0, PLAYER_GRAVITY)
+
 ##        keys = pg.key.get_pressed()
 ##        if keys[pg.K_LEFT]:
 ##            self.acc.x = -PLAYER_ACC
@@ -36,6 +37,10 @@ class Player(pg.sprite.Sprite):
             self.pos.x = WIDTH
             
         self.rect.midbottom = self.pos
+    def die(self):
+        self.kill()
+        
+        
 
 
 #####################################################
@@ -49,13 +54,14 @@ class Platform(pg.sprite.Sprite):
         self.rect.x = x
         self.rect.y= y
         
+#####################################################       
 class Pipe( pg.sprite.Sprite):
     def __init__(self,x,y,w,h):
         pg.sprite.Sprite.__init__(self)
         self.image = pg.Surface((w,h))
         self.image.fill(GREEN)
         self.rect = self.image.get_rect()
-        self.pos = vec(360, HEIGHT)
+        self.pos = vec(x, y)
         self.vel = vec(0, 0)
         self.acc = vec(0, 0) 
 
@@ -66,6 +72,11 @@ class Pipe( pg.sprite.Sprite):
         self.vel += self.acc
         self.pos += self.vel+.05 *self.acc
         self.rect.center = self.pos
+
+        if self.rect.right < -5:
+            self.kill()
+            
+    
         
         
         
